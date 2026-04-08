@@ -460,11 +460,14 @@
             clearInterval(state.timer);
             
             const missed = state.actQ.filter(q => q.answered && q.userAnswer !== q.corT).map(q => state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
-            state.missedQ = missed; // Store missed questions in state for immediate re-use in relaunchFromRes
+            state.missedQ = missed;
 
             if(!state.isOffTheRecord && (state.mode === 'practice' || state.mode === 'exam')) {
                 const attemptId = 'att_'+Date.now();
                 db.history.unshift({ id: attemptId, date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
+                
+                // FIXED BUG HERE: Saves attempt ID to state so `relaunch` database lookup doesn't crash
+                state.selAttemptId = attemptId; 
                 saveDB(); renderHistory(); renderSessions();
             }
             
@@ -480,12 +483,18 @@
         }
 
         function relaunchFromRes(action) {
-            if(action.includes('mistakes')) {
-                if(!state.missedQ || state.missedQ.length === 0) return alert("No mistakes found.");
-                state.rawQ = state.missedQ;
+            // FIXED BUG HERE: Intelligently routes between Database and Memory depending on mode
+            if (!state.isOffTheRecord) {
+                // Look up in database history
+                relaunch(action); 
+            } else {
+                // Use memory state for unrecorded bank revisions
+                if(action.includes('mistakes')) {
+                    if(!state.missedQ || state.missedQ.length === 0) return alert("No mistakes found.");
+                    state.rawQ = state.missedQ;
+                }
+                startQuizEngine(action.includes('watch') ? 'watch' : 'practice');
             }
-            // State subject, file, and bank types remain intact from the just-finished quiz
-            startQuizEngine(action.includes('watch') ? 'watch' : 'practice');
         }
 
         function exportJSON() {

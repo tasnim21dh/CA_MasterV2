@@ -168,7 +168,7 @@
                 <div id="explanation-box" class="hidden mt-8 p-6 bg-slate-800 border-l-4 border-blue-500 rounded-r-xl">
                     <h4 class="font-bold text-blue-400 mb-2">Logic & Reasoning</h4>
                     <p id="explanation-text" class="text-slate-300 text-sm mb-4 leading-relaxed"></p>
-                    <button id="btn-remove-bank" onclick="removeFromBank()" class="hidden px-4 py-2 bg-slate-700 text-red-400 text-xs font-bold rounded hover:bg-slate-600"><i data-lucide="trash-2" class="w-3 h-3 inline"></i> Remove from Bank</button>
+                    <button id="btn-remove-bank" class="hidden px-4 py-2 bg-slate-700 text-red-400 text-xs font-bold rounded hover:bg-slate-600"><i data-lucide="trash-2" class="w-3 h-3 inline"></i> Remove from Bank</button>
                 </div>
                 <div class="mt-8 flex justify-end">
                     <button id="btn-next-q" onclick="nextQuestion()" class="hidden px-8 py-3 bg-blue-600 rounded-xl font-bold btn-hover">Next</button>
@@ -420,11 +420,21 @@
             const btn = document.getElementById('btn-remove-bank');
             if(state.revBankType) {
                 btn.classList.remove('hidden');
+                // FIXED: Resets button UI text and properties for every new question
+                btn.innerHTML = `<i data-lucide="trash-2" class="w-3 h-3 inline"></i> Remove from Bank`;
+                btn.disabled = false;
+                
                 btn.onclick = () => { 
                     db[state.revBankType] = db[state.revBankType].filter(x => !(x.id === q.id && x.category3 === q.category3));
-                    saveDB(); renderBanks(); btn.innerText = "Removed!"; btn.disabled=true; 
+                    saveDB(); 
+                    renderBanks(); 
+                    btn.innerText = "Removed!"; 
+                    btn.disabled = true; 
                 }
-            } else btn.classList.add('hidden');
+                lucide.createIcons(); // Refresh the icon
+            } else {
+                btn.classList.add('hidden');
+            }
         }
 
         function handleAns(sel, btn) {
@@ -466,7 +476,6 @@
                 const attemptId = 'att_'+Date.now();
                 db.history.unshift({ id: attemptId, date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
                 
-                // FIXED BUG HERE: Saves attempt ID to state so `relaunch` database lookup doesn't crash
                 state.selAttemptId = attemptId; 
                 saveDB(); renderHistory(); renderSessions();
             }
@@ -483,12 +492,9 @@
         }
 
         function relaunchFromRes(action) {
-            // FIXED BUG HERE: Intelligently routes between Database and Memory depending on mode
             if (!state.isOffTheRecord) {
-                // Look up in database history
                 relaunch(action); 
             } else {
-                // Use memory state for unrecorded bank revisions
                 if(action.includes('mistakes')) {
                     if(!state.missedQ || state.missedQ.length === 0) return alert("No mistakes found.");
                     state.rawQ = state.missedQ;

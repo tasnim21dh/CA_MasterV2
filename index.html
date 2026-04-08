@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Master</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(() => console.log("PWA Active"));
+        }
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { dark: '#0f172a', glass: 'rgba(30, 41, 59, 0.7)' } } } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-hover { transition: all 0.2s ease-in-out; }
+        .btn-hover:hover { transform: translateY(-2px); }
+        .correct-ans { background-color: rgba(22, 101, 52, 0.8) !important; border-color: #22c55e !important; }
+        .wrong-ans { background-color: rgba(153, 27, 27, 0.8) !important; border-color: #ef4444 !important; }
+        .timer-warning { color: #ef4444; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto mb-8 flex justify-between items-center glass-panel p-4 rounded-2xl sticky top-4 z-50 shadow-lg hidden" id="app-header">
+        <div class="flex items-center gap-4">
+            <button onclick="navigate(1)" class="p-2 hover:bg-slate-700 rounded-lg transition"><i data-lucide="home"></i></button>
+            <div>
+                <h1 class="text-xl font-bold tracking-wider">CA Master</h1>
+                <p class="text-xs text-slate-400" id="header-subtitle">Dashboard</p>
+            </div>
+        </div>
+        <div id="quiz-stats" class="hidden flex gap-6 items-center">
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase">Score</p>
+                <p class="text-lg font-bold text-blue-400" id="header-score">0</p>
+            </div>
+            <div class="text-center" id="timer-container">
+                <p class="text-xs text-slate-400 uppercase" id="timer-label">Time</p>
+                <p class="text-xl font-mono font-bold text-slate-200" id="header-timer">00:00</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto space-y-8" id="main-content">
+        
+        <div id="page-1" class="space-y-8 block">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white">CA Master</h1>
+                <p class="text-slate-400 mt-2">Upload practice files or review targeted banks.</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="subject-blocks"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-orange-500">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="alert-triangle" class="text-orange-400"></i> Mistake Q. Bank</h2>
+                    <div id="mistake-subjects" class="grid grid-cols-2 gap-2"></div>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-purple-500">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="flag" class="text-purple-400"></i> Flagged Q. Bank</h2>
+                    <div id="flagged-subjects" class="grid grid-cols-2 gap-2"></div>
+                </div>
+            </div>
+
+            <div id="revision-config" class="hidden glass-panel p-6 rounded-2xl border border-blue-500 text-center">
+                <h3 class="text-xl font-bold mb-2" id="rev-title">Configure Quiz</h3>
+                <p class="text-slate-400 mb-6" id="rev-meta"></p>
+                <div class="flex justify-center gap-4 mb-6">
+                    <button onclick="setRevMode('practice')" id="btn-rev-prac" class="px-6 py-2 bg-blue-600 rounded-lg font-bold">Practice</button>
+                    <button onclick="setRevMode('watch')" id="btn-rev-watch" class="px-6 py-2 bg-slate-700 rounded-lg font-bold">Watch</button>
+                </div>
+                <div id="rev-qty-container" class="flex justify-center gap-4 mb-6">
+                    <button onclick="startRevision(10)" class="px-4 py-2 bg-slate-800 border border-slate-600 rounded flex-1 hover:bg-slate-700">10 Qs</button>
+                    <button onclick="startRevision(25)" class="px-4 py-2 bg-slate-800 border border-slate-600 rounded flex-1 hover:bg-slate-700">25 Qs</button>
+                    <button onclick="startRevision('all')" class="px-4 py-2 bg-slate-800 border border-slate-600 rounded flex-1 hover:bg-slate-700">All</button>
+                </div>
+                <button onclick="document.getElementById('revision-config').classList.add('hidden')" class="text-slate-500 underline">Cancel</button>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="flex border-b border-slate-700">
+                    <button onclick="switchTab('history')" id="tab-history" class="flex-1 py-4 font-bold bg-slate-800 text-blue-400">History</button>
+                    <button onclick="switchTab('sessions')" id="tab-sessions" class="flex-1 py-4 font-bold text-slate-400 hover:bg-slate-800">Sessions</button>
+                </div>
+                
+                <div id="content-history" class="p-6 block">
+                    <div class="flex flex-wrap gap-2 mb-6" id="history-filters"></div>
+                    <div id="history-list" class="space-y-3"><p class="text-slate-400 text-center">Select subject above.</p></div>
+                    <div id="history-actions" class="hidden mt-6 p-6 bg-slate-800 rounded-xl grid grid-cols-2 gap-4">
+                        <button onclick="relaunch('retake_all')" class="p-3 bg-blue-600 rounded-lg font-bold">Retake Full</button>
+                        <button onclick="relaunch('retake_mistakes')" class="p-3 bg-orange-600 rounded-lg font-bold">Retake Mistakes</button>
+                        <button onclick="relaunch('watch_all')" class="p-3 bg-slate-600 rounded-lg font-bold">Watch Full</button>
+                        <button onclick="relaunch('watch_mistakes')" class="p-3 bg-slate-700 border border-slate-500 rounded-lg font-bold">Watch Mistakes</button>
+                    </div>
+                </div>
+
+                <div id="content-sessions" class="p-6 hidden overflow-x-auto">
+                    <table class="w-full text-left text-sm"><tbody id="session-tbody" class="divide-y divide-slate-700"></tbody></table>
+                </div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 text-sm font-bold">
+                <button onclick="exportJSON()" class="text-blue-400 flex items-center gap-2 hover:text-blue-300"><i data-lucide="download"></i> Backup JSON</button>
+                <label class="cursor-pointer text-green-400 flex items-center gap-2 hover:text-green-300"><i data-lucide="upload"></i> Restore JSON<input type="file" accept=".json" class="hidden" onchange="importJSON(event)"></label>
+                <button onclick="exportBanksCSV()" class="text-orange-400 flex items-center gap-2 hover:text-orange-300"><i data-lucide="file-spreadsheet"></i> Export Banks (CSV)</button>
+            </div>
+        </div>
+
+        <div id="page-2" class="hidden space-y-8 mt-12 text-center">
+            <h2 class="text-3xl font-bold" id="upload-subject-title">Subject</h2>
+            <div class="glass-panel p-16 rounded-3xl border-2 border-dashed border-slate-500 cursor-pointer hover:border-blue-400" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+                <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleFileSelect(event)">
+                <label for="csv-upload" class="cursor-pointer">
+                    <i data-lucide="file-spreadsheet" class="mx-auto w-16 h-16 text-slate-400 mb-4"></i>
+                    <p class="text-xl font-bold">Drop CSV or Click</p>
+                </label>
+            </div>
+            <div id="upload-conf" class="hidden glass-panel p-6 rounded-xl border border-green-500/30 bg-green-900/20 text-center">
+                <p class="text-green-400 font-bold" id="file-name-display"></p>
+                <button onclick="navigate(3)" class="mt-4 px-8 py-3 bg-blue-600 rounded-xl font-bold w-full">Proceed</button>
+            </div>
+        </div>
+
+        <div id="page-3" class="hidden space-y-8 mt-12">
+            <h2 class="text-3xl font-bold text-center">Select Strategy</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button onclick="startQuizEngine('practice')" class="glass-panel p-8 rounded-2xl text-left border-2 border-transparent hover:border-green-500">
+                    <h3 class="text-2xl font-bold text-green-400 mb-2">Practice Mode</h3>
+                    <p class="text-slate-400">Count-up timer, instant logic, no pressure.</p>
+                </button>
+                <button onclick="startQuizEngine('exam')" class="glass-panel p-8 rounded-2xl text-left border-2 border-transparent hover:border-red-500">
+                    <h3 class="text-2xl font-bold text-red-400 mb-2">Exam Mode</h3>
+                    <p class="text-slate-400">1-hour countdown, hidden feedback, auto-submits.</p>
+                </button>
+            </div>
+        </div>
+
+        <div id="quiz-engine" class="hidden space-y-6">
+            <div class="w-full bg-slate-800 h-2 rounded-full"><div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all"></div></div>
+            
+            <div class="glass-panel p-6 md:p-10 rounded-2xl">
+                <div class="flex justify-between mb-6 pb-4 border-b border-slate-700 items-center">
+                    <span id="q-counter" class="text-sm font-bold text-slate-400"></span>
+                    <button onclick="toggleFlag()" id="btn-flag" class="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-purple-400"><i data-lucide="flag"></i></button>
+                </div>
+                
+                <h2 id="q-text" class="text-xl md:text-2xl font-semibold mb-8"></h2>
+                <div id="options-grid" class="grid gap-4"></div>
+
+                <div id="explanation-box" class="hidden mt-8 p-6 bg-slate-800 border-l-4 border-blue-500 rounded-r-xl">
+                    <h4 class="font-bold text-blue-400 mb-2">Logic & Reasoning</h4>
+                    <p id="explanation-text" class="text-slate-300 text-sm mb-4"></p>
+                    <button id="btn-remove-bank" onclick="removeFromBank()" class="hidden px-4 py-2 bg-slate-700 text-red-400 text-xs font-bold rounded hover:bg-slate-600"><i data-lucide="trash-2" class="w-3 h-3 inline"></i> Remove from Bank</button>
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button id="btn-next-q" onclick="nextQuestion()" class="hidden px-8 py-3 bg-blue-600 rounded-xl font-bold">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-4" class="hidden space-y-8 text-center">
+            <div class="glass-panel p-10 rounded-3xl">
+                <h2 class="text-3xl font-bold mb-8">Exam Complete</h2>
+                <div class="flex justify-center gap-12 mb-8">
+                    <div><p class="text-5xl font-bold text-blue-400" id="res-score">0</p><p class="text-slate-400 text-sm mt-2">Score</p></div>
+                    <div><p class="text-5xl font-bold text-green-400" id="res-acc">0%</p><p class="text-slate-400 text-sm mt-2">Accuracy</p></div>
+                    <div><p class="text-5xl font-bold text-purple-400" id="res-time">0m</p><p class="text-slate-400 text-sm mt-2">Time</p></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="relaunchFromRes('retake_all')" class="p-4 glass-panel rounded-xl font-bold">Retake Full</button>
+                <button onclick="relaunchFromRes('retake_mistakes')" id="res-btn-mistake" class="p-4 glass-panel rounded-xl font-bold border-orange-500 text-orange-400">Retake Mistakes</button>
+                <button onclick="relaunchFromRes('watch_all')" class="p-4 glass-panel rounded-xl font-bold">Watch Full</button>
+                <button onclick="relaunchFromRes('watch_mistakes')" id="res-btn-wmistake" class="p-4 glass-panel rounded-xl font-bold border-slate-500 text-slate-300">Watch Mistakes</button>
+            </div>
+            <button onclick="navigate(1)" class="px-8 py-3 bg-slate-800 rounded-xl font-bold mt-4">Dashboard</button>
+        </div>
+    </main>
+
+    <script>
+        const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology"];
+        const EXAM_TIME = 3600;
+        
+        let db = { history: [], mistakes: [], flags: [] };
+        let state = {
+            subject: null, file: null, mode: null, rawQ: [], actQ: [], idx: 0, score: 0,
+            timer: null, timeLeft: EXAM_TIME, timeSpent: 0, isOffTheRecord: false, revBankType: null, selAttemptId: null
+        };
+
+        // --- CORE DB ---
+        function loadDB() {
+            db.history = JSON.parse(localStorage.getItem('cam_history')) || [];
+            db.mistakes = JSON.parse(localStorage.getItem('cam_mistakes')) || [];
+            db.flags = JSON.parse(localStorage.getItem('cam_flags')) || [];
+        }
+        function saveDB() {
+            localStorage.setItem('cam_history', JSON.stringify(db.history));
+            localStorage.setItem('cam_mistakes', JSON.stringify(db.mistakes));
+            localStorage.setItem('cam_flags', JSON.stringify(db.flags));
+        }
+        function addToBank(type, q) {
+            const bank = db[type];
+            if (!bank.find(x => x.id === q.id && x.category3 === q.category3)) {
+                bank.push(q); saveDB(); renderBanks();
+            }
+        }
+        function removeBankItem(type, qId) {
+            db[type] = db[type].filter(x => x.id !== qId); saveDB(); renderBanks();
+        }
+
+        // --- INIT & DASHBOARD ---
+        function init() {
+            loadDB(); lucide.createIcons();
+            document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => `<button onclick="startUpload('${s}')" class="glass-panel p-6 rounded-xl font-bold hover:bg-slate-800 hover:text-blue-400">${s}</button>`).join('');
+            renderBanks(); renderHistory(); renderSessions();
+            document.getElementById('app-header').classList.remove('hidden');
+        }
+
+        function renderBanks() {
+            const renderObj = (type, elId) => {
+                document.getElementById(elId).innerHTML = SUBJECTS.map(s => {
+                    const count = db[type].filter(q => q.category3 === s).length;
+                    return `<button onclick="openRevConfig('${type}', '${s}')" class="p-2 text-sm bg-slate-800 rounded border border-slate-700 ${count>0?'text-white hover:border-blue-500':'text-slate-500'}" ${count===0?'disabled':''}>${s} (${count})</button>`;
+                }).join('');
+            };
+            renderObj('mistakes', 'mistake-subjects');
+            renderObj('flags', 'flagged-subjects');
+        }
+
+        // --- TARGETED REVISION CONFIG ---
+        let revConfig = { type: null, subject: null, mode: 'practice' };
+        function openRevConfig(type, sub) {
+            revConfig = { type, subject: sub, mode: 'practice' };
+            document.getElementById('rev-title').innerText = `${type==='mistakes'?'Mistakes':'Flagged'} - ${sub}`;
+            document.getElementById('revision-config').classList.remove('hidden');
+            setRevMode('practice');
+        }
+        function setRevMode(mode) {
+            revConfig.mode = mode;
+            document.getElementById('btn-rev-prac').className = `px-6 py-2 rounded-lg font-bold ${mode==='practice'?'bg-blue-600':'bg-slate-800'}`;
+            document.getElementById('btn-rev-watch').className = `px-6 py-2 rounded-lg font-bold ${mode==='watch'?'bg-blue-600':'bg-slate-800'}`;
+            document.getElementById('rev-qty-container').style.display = mode === 'practice' ? 'flex' : 'none';
+            if (mode === 'watch') startRevision('all');
+        }
+        function startRevision(qty) {
+            document.getElementById('revision-config').classList.add('hidden');
+            let pool = db[revConfig.type].filter(q => q.category3 === revConfig.subject);
+            state.subject = revConfig.subject;
+            state.file = `${revConfig.type.toUpperCase()}_BANK`;
+            state.isOffTheRecord = true;
+            state.revBankType = revConfig.type;
+            
+            if (qty !== 'all') { pool.sort(() => 0.5 - Math.random()); pool = pool.slice(0, qty); }
+            state.rawQ = pool;
+            startQuizEngine(revConfig.mode);
+        }
+
+        // --- HISTORY & SESSIONS ---
+        function switchTab(t) {
+            ['history', 'sessions'].forEach(x => {
+                document.getElementById(`content-${x}`).classList.toggle('hidden', x!==t);
+                document.getElementById(`tab-${x}`).className = `flex-1 py-4 font-bold ${x===t?'bg-slate-800 text-blue-400':'text-slate-400 hover:bg-slate-800'}`;
+            });
+        }
+        function renderHistory() {
+            document.getElementById('history-filters').innerHTML = SUBJECTS.map(s => `<button onclick="loadHistory('${s}')" class="px-3 py-1 bg-slate-800 rounded-full text-sm hover:border-blue-500 border border-transparent">${s}</button>`).join('');
+            document.getElementById('history-actions').classList.add('hidden');
+        }
+        function loadHistory(sub) {
+            const arr = db.history.filter(x => x.subject === sub);
+            document.getElementById('history-list').innerHTML = arr.length ? arr.map(a => `<div onclick="selAttempt('${a.id}')" class="p-4 bg-slate-800 rounded-lg cursor-pointer hover:border-blue-500 border border-slate-700 flex justify-between"><p class="font-bold">${a.file} <span class="text-xs text-slate-400 block">${a.date}</span></p><p class="text-blue-400 font-bold">${a.score}/${a.total}</p></div>`).join('') : '<p class="text-slate-500">No attempts.</p>';
+            document.getElementById('history-actions').classList.add('hidden');
+        }
+        function selAttempt(id) {
+            state.selAttemptId = id;
+            document.getElementById('history-actions').classList.remove('hidden');
+        }
+        function relaunch(action) {
+            const att = db.history.find(x => x.id === state.selAttemptId);
+            state.subject = att.subject; state.file = att.file; state.isOffTheRecord = false; state.revBankType = null;
+            state.rawQ = (action.includes('mistakes')) ? att.missed : att.raw;
+            if(!state.rawQ || state.rawQ.length === 0) return alert("No mistakes found.");
+            startQuizEngine(action.includes('watch') ? 'watch' : 'practice');
+        }
+        function renderSessions() {
+            document.getElementById('session-tbody').innerHTML = db.history.map(a => `<tr><td class="p-2">${a.date.split(',')[0]}</td><td class="p-2">${a.subject}</td><td class="p-2">${a.file}</td><td class="p-2 text-right"><button onclick="delSession('${a.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
+            lucide.createIcons();
+        }
+        function delSession(id) {
+            if(confirm("Delete attempt? Mistakes & Flags will remain in banks.")) {
+                db.history = db.history.filter(x => x.id !== id); saveDB(); renderSessions(); renderHistory();
+            }
+        }
+
+        // --- UPLOAD LOGIC ---
+        function startUpload(sub) { state.subject = sub; navigate(2); document.getElementById('upload-subject-title').innerText = sub; document.getElementById('upload-conf').classList.add('hidden'); }
+        function handleDrop(e) { e.preventDefault(); processFile(e.dataTransfer.files[0]); }
+        function handleFileSelect(e) { processFile(e.target.files[0]); }
+        function processFile(file) {
+            if(!file.name.endsWith('.csv')) return alert("CSV only.");
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: res => {
+                const valid = res.data.filter(r => r.id && r.question && r.correct_option);
+                if(!valid.length) return alert("Invalid format.");
+                state.file = file.name; state.rawQ = valid; state.isOffTheRecord = false; state.revBankType = null;
+                document.getElementById('file-name-display').innerText = `${file.name} (${valid.length} Qs)`;
+                document.getElementById('upload-conf').classList.remove('hidden');
+            }});
+        }
+
+        // --- NAVIGATION & ENGINE ---
+        function navigate(p) {
+            [1,2,3,'quiz',4].forEach(x => document.getElementById(x==='quiz'?'quiz-engine':`page-${x}`).classList.add('hidden'));
+            if(p===1) init();
+            document.getElementById(p==='quiz'?'quiz-engine':`page-${p}`).classList.remove('hidden');
+            document.getElementById('quiz-stats').classList.toggle('hidden', p !== 'quiz');
+            clearInterval(state.timer);
+        }
+
+        function startQuizEngine(mode) {
+            state.mode = mode; state.idx = 0; state.score = 0; state.timeSpent = 0; state.timeLeft = EXAM_TIME;
+            
+            // Map and Shuffle
+            state.actQ = state.rawQ.map(q => {
+                let opts = [{k:'A', t:q.option_a}, {k:'B', t:q.option_b}, {k:'C', t:q.option_c}, {k:'D', t:q.option_d}];
+                let corT = opts.find(o => o.k === q.correct_option?.trim().toUpperCase())?.t;
+                if(mode !== 'watch') opts.sort(() => 0.5 - Math.random());
+                return {...q, opts, corT, answered: false};
+            });
+            if(mode !== 'watch') state.actQ.sort(() => 0.5 - Math.random());
+
+            navigate('quiz');
+            document.getElementById('header-subtitle').innerText = mode.toUpperCase() + (state.isOffTheRecord ? " (BANK)" : "");
+            document.getElementById('header-score').innerText = `0 / ${state.actQ.length}`;
+            
+            const timerLabel = document.getElementById('timer-label');
+            if(mode === 'exam') { timerLabel.innerText = "Left"; runTimer(true); }
+            else if(mode === 'practice') { timerLabel.innerText = "Spent"; runTimer(false); }
+            else { document.getElementById('timer-container').classList.add('hidden'); }
+            
+            renderQ();
+        }
+
+        function runTimer(isExam) {
+            document.getElementById('timer-container').classList.remove('hidden');
+            const el = document.getElementById('header-timer'); el.classList.remove('timer-warning');
+            state.timer = setInterval(() => {
+                state.timeSpent++;
+                if(isExam) {
+                    state.timeLeft--;
+                    if(state.timeLeft <= 300) el.classList.add('timer-warning');
+                    if(state.timeLeft <= 0) finishExam();
+                    el.innerText = `${Math.floor(state.timeLeft/60).toString().padStart(2,'0')}:${(state.timeLeft%60).toString().padStart(2,'0')}`;
+                } else {
+                    el.innerText = `${Math.floor(state.timeSpent/60).toString().padStart(2,'0')}:${(state.timeSpent%60).toString().padStart(2,'0')}`;
+                }
+            }, 1000);
+        }
+
+        function renderQ() {
+            const q = state.actQ[state.idx];
+            document.getElementById('progress-bar').style.width = `${(state.idx/state.actQ.length)*100}%`;
+            document.getElementById('q-counter').innerText = `Q ${state.idx + 1} / ${state.actQ.length}`;
+            document.getElementById('q-text').innerText = q.question;
+            
+            // Flag UI
+            const btnFlag = document.getElementById('btn-flag');
+            const isFlagged = db.flags.some(x => x.id === q.id);
+            btnFlag.className = `p-2 rounded-lg ${isFlagged ? 'bg-purple-900 text-purple-400' : 'bg-slate-800 text-slate-400 hover:text-purple-400'}`;
+
+            // Options
+            const grid = document.getElementById('options-grid'); grid.innerHTML = '';
+            q.opts.forEach((o, i) => {
+                const b = document.createElement('button');
+                b.className = "text-left p-5 rounded-xl border-2 border-slate-700 bg-slate-800 hover:bg-slate-700 font-medium flex items-center gap-4 opt-btn";
+                b.innerHTML = `<span class="w-8 h-8 rounded bg-slate-900 text-slate-400 flex items-center justify-center font-bold">${['A','B','C','D'][i]}</span> <span>${o.t}</span>`;
+                if(state.mode === 'watch') { b.disabled = true; if(o.t === q.corT) b.classList.add('correct-ans'); }
+                else { b.onclick = () => handleAns(o, b); }
+                grid.appendChild(b);
+            });
+
+            // Logic Box
+            const expBox = document.getElementById('explanation-box');
+            document.getElementById('btn-next-q').classList.toggle('hidden', state.mode !== 'watch');
+            document.getElementById('btn-next-q').innerText = state.idx === state.actQ.length - 1 ? 'Finish' : 'Next';
+            
+            if(state.mode === 'watch') {
+                document.getElementById('explanation-text').innerText = q.explanation || 'No logic provided.';
+                expBox.classList.remove('hidden');
+                configRemoveBtn(q);
+            } else { expBox.classList.add('hidden'); }
+        }
+
+        function toggleFlag() {
+            const q = state.actQ[state.idx];
+            const exists = db.flags.some(x => x.id === q.id);
+            if(exists) removeBankItem('flags', q.id); else addToBank('flags', state.rawQ.find(x => x.id === q.id));
+            renderQ(); // refresh color
+        }
+
+        function configRemoveBtn(q) {
+            const btn = document.getElementById('btn-remove-bank');
+            if(state.revBankType) { // Only show inside targeted revision
+                btn.classList.remove('hidden');
+                btn.onclick = () => { removeBankItem(state.revBankType, q.id); btn.innerText = "Removed!"; btn.disabled=true; }
+            } else btn.classList.add('hidden');
+        }
+
+        function handleAns(sel, btn) {
+            const q = state.actQ[state.idx]; if(q.answered) return; q.answered = true;
+            const isCor = sel.t === q.corT;
+            if(isCor) state.score++; else if(!state.isOffTheRecord) addToBank('mistakes', state.rawQ.find(x => x.id === q.id));
+            
+            document.getElementById('header-score').innerText = `${state.score} / ${state.actQ.length}`;
+            document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+
+            if(state.mode === 'practice') {
+                if(isCor) btn.classList.add('correct-ans'); else {
+                    btn.classList.add('wrong-ans');
+                    document.querySelectorAll('.opt-btn').forEach((b, i) => { if(q.opts[i].t === q.corT) b.classList.add('correct-ans'); });
+                }
+                document.getElementById('explanation-text').innerText = q.explanation || 'No logic provided.';
+                document.getElementById('explanation-box').classList.remove('hidden');
+                configRemoveBtn(q);
+            } else { btn.classList.add('border-blue-500'); } // Exam neutral
+            document.getElementById('btn-next-q').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            if(state.mode !== 'watch' && !state.actQ[state.idx].answered) return;
+            if(state.idx < state.actQ.length - 1) { state.idx++; renderQ(); } else finishExam();
+        }
+
+        function finishExam() {
+            clearInterval(state.timer);
+            const missed = state.actQ.filter(q => q.answered && q.opts.find(o=>o.t===q.corT)?.t !== q.opts.find(o=>o.selected)?.t).map(q => state.rawQ.find(x=>x.id===q.id));
+            
+            if(!state.isOffTheRecord && (state.mode === 'practice' || state.mode === 'exam')) {
+                db.history.unshift({ id: 'att_'+Date.now(), date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
+                saveDB(); renderHistory(); renderSessions();
+            }
+            navigate(4);
+            const acc = Math.round((state.score/state.actQ.length)*100)||0;
+            document.getElementById('res-score').innerText = `${state.score}/${state.actQ.length}`;
+            document.getElementById('res-acc').innerText = `${acc}%`;
+            document.getElementById('res-time').innerText = `${Math.floor(state.timeSpent/60)}m ${state.timeSpent%60}s`;
+            
+            const btnM = document.getElementById('res-btn-mistake'); const btnWM = document.getElementById('res-btn-wmistake');
+            if(missed.length) { btnM.disabled=false; btnWM.disabled=false; btnM.classList.remove('opacity-50'); btnWM.classList.remove('opacity-50'); }
+            else { btnM.disabled=true; btnWM.disabled=true; btnM.classList.add('opacity-50'); btnWM.classList.add('opacity-50'); }
+        }
+
+        function relaunchFromRes(act) { relaunch(act); } // Hooks into existing logic
+
+        // --- PORTABILITY ---
+        function exportJSON() {
+            const data = encodeURIComponent(JSON.stringify(db));
+            const a = document.createElement('a'); a.href = `data:text/json;charset=utf-8,${data}`; a.download = `CA_Master_Backup_${Date.now()}.json`; a.click();
+        }
+        function importJSON(e) {
+            const reader = new FileReader();
+            reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if(d.history) { db=d; saveDB(); init(); alert("Restored!"); } } catch { alert("Invalid File."); } };
+            reader.readAsText(e.target.files[0]);
+        }
+        function exportBanksCSV() {
+            let combined = [...db.mistakes, ...db.flags];
+            // Deduplicate for CSV
+            combined = Array.from(new Map(combined.map(item => [item.id + item.category3, item])).values());
+            if(!combined.length) return alert("Banks are empty.");
+            const csv = Papa.unparse(combined);
+            const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`; a.download = `CA_Study_Banks_${Date.now()}.csv`; a.click();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

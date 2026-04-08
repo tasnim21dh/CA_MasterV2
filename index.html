@@ -10,9 +10,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').then(() => console.log("PWA Active"));
+        // Register Service Worker for PWA - Protocol check added to prevent errors in preview environments
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+            navigator.serviceWorker.register('./sw.js').then(() => console.log("PWA Active")).catch(err => console.log("PWA Registration skipped in this environment"));
         }
         tailwind.config = { darkMode: 'class', theme: { extend: { colors: { dark: '#0f172a', glass: 'rgba(30, 41, 59, 0.7)' } } } }
     </script>
@@ -58,7 +58,7 @@
         <div id="page-1" class="space-y-8 block">
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-white">CA Master</h1>
-                <p class="text-slate-400 mt-2">Upload practice files or review targeted banks.</p>
+                <p class="text-slate-400 mt-2">Practice individual subjects or attempt the Mixed Bag.</p>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="subject-blocks"></div>
@@ -149,22 +149,18 @@
 
         <div id="quiz-engine" class="hidden space-y-6">
             <div class="w-full bg-slate-800 h-2 rounded-full"><div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all"></div></div>
-            
             <div class="glass-panel p-6 md:p-10 rounded-2xl">
                 <div class="flex justify-between mb-6 pb-4 border-b border-slate-700 items-center">
                     <span id="q-counter" class="text-sm font-bold text-slate-400"></span>
                     <button onclick="toggleFlag()" id="btn-flag" class="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-purple-400"><i data-lucide="flag"></i></button>
                 </div>
-                
                 <h2 id="q-text" class="text-xl md:text-2xl font-semibold mb-8"></h2>
                 <div id="options-grid" class="grid gap-4"></div>
-
                 <div id="explanation-box" class="hidden mt-8 p-6 bg-slate-800 border-l-4 border-blue-500 rounded-r-xl">
                     <h4 class="font-bold text-blue-400 mb-2">Logic & Reasoning</h4>
                     <p id="explanation-text" class="text-slate-300 text-sm mb-4"></p>
                     <button id="btn-remove-bank" onclick="removeFromBank()" class="hidden px-4 py-2 bg-slate-700 text-red-400 text-xs font-bold rounded hover:bg-slate-600"><i data-lucide="trash-2" class="w-3 h-3 inline"></i> Remove from Bank</button>
                 </div>
-
                 <div class="mt-8 flex justify-end">
                     <button id="btn-next-q" onclick="nextQuestion()" class="hidden px-8 py-3 bg-blue-600 rounded-xl font-bold">Next</button>
                 </div>
@@ -191,7 +187,7 @@
     </main>
 
     <script>
-        const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology"];
+        const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology", "Random All"];
         const EXAM_TIME = 3600;
         
         let db = { history: [], mistakes: [], flags: [] };
@@ -200,7 +196,6 @@
             timer: null, timeLeft: EXAM_TIME, timeSpent: 0, isOffTheRecord: false, revBankType: null, selAttemptId: null
         };
 
-        // --- CORE DB ---
         function loadDB() {
             db.history = JSON.parse(localStorage.getItem('cam_history')) || [];
             db.mistakes = JSON.parse(localStorage.getItem('cam_mistakes')) || [];
@@ -221,30 +216,34 @@
             db[type] = db[type].filter(x => x.id !== qId); saveDB(); renderBanks();
         }
 
-        // --- INIT & DASHBOARD ---
         function init() {
             loadDB(); lucide.createIcons();
-            document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => `<button onclick="startUpload('${s}')" class="glass-panel p-6 rounded-xl font-bold hover:bg-slate-800 hover:text-blue-400">${s}</button>`).join('');
+            document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => `
+                <button onclick="startUpload('${s}')" class="glass-panel p-6 rounded-xl font-bold hover:bg-slate-800 hover:text-blue-400 transition-all ${s === 'Random All' ? 'border-2 border-blue-500' : ''}">
+                    ${s}
+                </button>`).join('');
             renderBanks(); renderHistory(); renderSessions();
             document.getElementById('app-header').classList.remove('hidden');
         }
 
         function renderBanks() {
             const renderObj = (type, elId) => {
-                document.getElementById(elId).innerHTML = SUBJECTS.map(s => {
-                    const count = db[type].filter(q => q.category3 === s).length;
-                    return `<button onclick="openRevConfig('${type}', '${s}')" class="p-2 text-sm bg-slate-800 rounded border border-slate-700 ${count>0?'text-white hover:border-blue-500':'text-slate-500'}" ${count===0?'disabled':''}>${s} (${count})</button>`;
+                const subList = [...SUBJECTS]; // Keep Random All in sublist but use it as Mixed Bag
+                document.getElementById(elId).innerHTML = subList.map(s => {
+                    const count = s === "Random All" ? db[type].length : db[type].filter(q => q.category3 === s).length;
+                    const label = s === "Random All" ? "Mixed Bag" : s;
+                    return `<button onclick="openRevConfig('${type}', '${s}')" class="p-2 text-sm bg-slate-800 rounded border border-slate-700 ${count>0?'text-white hover:border-blue-500':'text-slate-500'}" ${count===0?'disabled':''}>${label} (${count})</button>`;
                 }).join('');
             };
             renderObj('mistakes', 'mistake-subjects');
             renderObj('flags', 'flagged-subjects');
         }
 
-        // --- TARGETED REVISION CONFIG ---
         let revConfig = { type: null, subject: null, mode: 'practice' };
         function openRevConfig(type, sub) {
             revConfig = { type, subject: sub, mode: 'practice' };
-            document.getElementById('rev-title').innerText = `${type==='mistakes'?'Mistakes':'Flagged'} - ${sub}`;
+            const title = sub === "Random All" ? "Mixed Bag" : sub;
+            document.getElementById('rev-title').innerText = `${type==='mistakes'?'Mistakes':'Flagged'} - ${title}`;
             document.getElementById('revision-config').classList.remove('hidden');
             setRevMode('practice');
         }
@@ -257,18 +256,17 @@
         }
         function startRevision(qty) {
             document.getElementById('revision-config').classList.add('hidden');
-            let pool = db[revConfig.type].filter(q => q.category3 === revConfig.subject);
+            let pool = revConfig.subject === "Random All" ? db[revConfig.type] : db[revConfig.type].filter(q => q.category3 === revConfig.subject);
             state.subject = revConfig.subject;
             state.file = `${revConfig.type.toUpperCase()}_BANK`;
             state.isOffTheRecord = true;
             state.revBankType = revConfig.type;
             
-            if (qty !== 'all') { pool.sort(() => 0.5 - Math.random()); pool = pool.slice(0, qty); }
+            if (qty !== 'all') { pool = [...pool].sort(() => 0.5 - Math.random()).slice(0, qty); }
             state.rawQ = pool;
             startQuizEngine(revConfig.mode);
         }
 
-        // --- HISTORY & SESSIONS ---
         function switchTab(t) {
             ['history', 'sessions'].forEach(x => {
                 document.getElementById(`content-${x}`).classList.toggle('hidden', x!==t);
@@ -284,10 +282,7 @@
             document.getElementById('history-list').innerHTML = arr.length ? arr.map(a => `<div onclick="selAttempt('${a.id}')" class="p-4 bg-slate-800 rounded-lg cursor-pointer hover:border-blue-500 border border-slate-700 flex justify-between"><p class="font-bold">${a.file} <span class="text-xs text-slate-400 block">${a.date}</span></p><p class="text-blue-400 font-bold">${a.score}/${a.total}</p></div>`).join('') : '<p class="text-slate-500">No attempts.</p>';
             document.getElementById('history-actions').classList.add('hidden');
         }
-        function selAttempt(id) {
-            state.selAttemptId = id;
-            document.getElementById('history-actions').classList.remove('hidden');
-        }
+        function selAttempt(id) { state.selAttemptId = id; document.getElementById('history-actions').classList.remove('hidden'); }
         function relaunch(action) {
             const att = db.history.find(x => x.id === state.selAttemptId);
             state.subject = att.subject; state.file = att.file; state.isOffTheRecord = false; state.revBankType = null;
@@ -299,28 +294,21 @@
             document.getElementById('session-tbody').innerHTML = db.history.map(a => `<tr><td class="p-2">${a.date.split(',')[0]}</td><td class="p-2">${a.subject}</td><td class="p-2">${a.file}</td><td class="p-2 text-right"><button onclick="delSession('${a.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`).join('');
             lucide.createIcons();
         }
-        function delSession(id) {
-            if(confirm("Delete attempt? Mistakes & Flags will remain in banks.")) {
-                db.history = db.history.filter(x => x.id !== id); saveDB(); renderSessions(); renderHistory();
-            }
-        }
+        function delSession(id) { if(confirm("Delete attempt? Mistakes & Flags will remain.")) { db.history = db.history.filter(x => x.id !== id); saveDB(); renderSessions(); renderHistory(); } }
 
-        // --- UPLOAD LOGIC ---
         function startUpload(sub) { state.subject = sub; navigate(2); document.getElementById('upload-subject-title').innerText = sub; document.getElementById('upload-conf').classList.add('hidden'); }
         function handleDrop(e) { e.preventDefault(); processFile(e.dataTransfer.files[0]); }
         function handleFileSelect(e) { processFile(e.target.files[0]); }
         function processFile(file) {
-            if(!file.name.endsWith('.csv')) return alert("CSV only.");
             Papa.parse(file, { header: true, skipEmptyLines: true, complete: res => {
                 const valid = res.data.filter(r => r.id && r.question && r.correct_option);
                 if(!valid.length) return alert("Invalid format.");
-                state.file = file.name; state.rawQ = valid; state.isOffTheRecord = false; state.revBankType = null;
+                state.file = file.name; state.rawQ = valid;
                 document.getElementById('file-name-display').innerText = `${file.name} (${valid.length} Qs)`;
                 document.getElementById('upload-conf').classList.remove('hidden');
             }});
         }
 
-        // --- NAVIGATION & ENGINE ---
         function navigate(p) {
             [1,2,3,'quiz',4].forEach(x => document.getElementById(x==='quiz'?'quiz-engine':`page-${x}`).classList.add('hidden'));
             if(p===1) init();
@@ -331,8 +319,6 @@
 
         function startQuizEngine(mode) {
             state.mode = mode; state.idx = 0; state.score = 0; state.timeSpent = 0; state.timeLeft = EXAM_TIME;
-            
-            // Map and Shuffle
             state.actQ = state.rawQ.map(q => {
                 let opts = [{k:'A', t:q.option_a}, {k:'B', t:q.option_b}, {k:'C', t:q.option_c}, {k:'D', t:q.option_d}];
                 let corT = opts.find(o => o.k === q.correct_option?.trim().toUpperCase())?.t;
@@ -340,16 +326,13 @@
                 return {...q, opts, corT, answered: false};
             });
             if(mode !== 'watch') state.actQ.sort(() => 0.5 - Math.random());
-
             navigate('quiz');
-            document.getElementById('header-subtitle').innerText = mode.toUpperCase() + (state.isOffTheRecord ? " (BANK)" : "");
+            document.getElementById('header-subtitle').innerText = mode.toUpperCase();
             document.getElementById('header-score').innerText = `0 / ${state.actQ.length}`;
-            
             const timerLabel = document.getElementById('timer-label');
             if(mode === 'exam') { timerLabel.innerText = "Left"; runTimer(true); }
             else if(mode === 'practice') { timerLabel.innerText = "Spent"; runTimer(false); }
             else { document.getElementById('timer-container').classList.add('hidden'); }
-            
             renderQ();
         }
 
@@ -374,28 +357,21 @@
             document.getElementById('progress-bar').style.width = `${(state.idx/state.actQ.length)*100}%`;
             document.getElementById('q-counter').innerText = `Q ${state.idx + 1} / ${state.actQ.length}`;
             document.getElementById('q-text').innerText = q.question;
-            
-            // Flag UI
             const btnFlag = document.getElementById('btn-flag');
-            const isFlagged = db.flags.some(x => x.id === q.id);
+            const isFlagged = db.flags.some(x => x.id === q.id && x.category3 === q.category3);
             btnFlag.className = `p-2 rounded-lg ${isFlagged ? 'bg-purple-900 text-purple-400' : 'bg-slate-800 text-slate-400 hover:text-purple-400'}`;
-
-            // Options
             const grid = document.getElementById('options-grid'); grid.innerHTML = '';
             q.opts.forEach((o, i) => {
                 const b = document.createElement('button');
-                b.className = "text-left p-5 rounded-xl border-2 border-slate-700 bg-slate-800 hover:bg-slate-700 font-medium flex items-center gap-4 opt-btn";
+                b.className = "text-left p-5 rounded-xl border-2 border-slate-700 bg-slate-800 hover:bg-slate-700 font-medium flex items-center gap-4 opt-btn transition-colors";
                 b.innerHTML = `<span class="w-8 h-8 rounded bg-slate-900 text-slate-400 flex items-center justify-center font-bold">${['A','B','C','D'][i]}</span> <span>${o.t}</span>`;
                 if(state.mode === 'watch') { b.disabled = true; if(o.t === q.corT) b.classList.add('correct-ans'); }
                 else { b.onclick = () => handleAns(o, b); }
                 grid.appendChild(b);
             });
-
-            // Logic Box
             const expBox = document.getElementById('explanation-box');
             document.getElementById('btn-next-q').classList.toggle('hidden', state.mode !== 'watch');
             document.getElementById('btn-next-q').innerText = state.idx === state.actQ.length - 1 ? 'Finish' : 'Next';
-            
             if(state.mode === 'watch') {
                 document.getElementById('explanation-text').innerText = q.explanation || 'No logic provided.';
                 expBox.classList.remove('hidden');
@@ -405,27 +381,29 @@
 
         function toggleFlag() {
             const q = state.actQ[state.idx];
-            const exists = db.flags.some(x => x.id === q.id);
-            if(exists) removeBankItem('flags', q.id); else addToBank('flags', state.rawQ.find(x => x.id === q.id));
-            renderQ(); // refresh color
+            const exists = db.flags.some(x => x.id === q.id && x.category3 === q.category3);
+            if(exists) db.flags = db.flags.filter(x => !(x.id === q.id && x.category3 === q.category3));
+            else addToBank('flags', state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
+            saveDB(); renderBanks(); renderQ();
         }
 
         function configRemoveBtn(q) {
             const btn = document.getElementById('btn-remove-bank');
-            if(state.revBankType) { // Only show inside targeted revision
+            if(state.revBankType) {
                 btn.classList.remove('hidden');
-                btn.onclick = () => { removeBankItem(state.revBankType, q.id); btn.innerText = "Removed!"; btn.disabled=true; }
+                btn.onclick = () => { 
+                    db[state.revBankType] = db[state.revBankType].filter(x => !(x.id === q.id && x.category3 === q.category3));
+                    saveDB(); renderBanks(); btn.innerText = "Removed!"; btn.disabled=true; 
+                }
             } else btn.classList.add('hidden');
         }
 
         function handleAns(sel, btn) {
             const q = state.actQ[state.idx]; if(q.answered) return; q.answered = true;
             const isCor = sel.t === q.corT;
-            if(isCor) state.score++; else if(!state.isOffTheRecord) addToBank('mistakes', state.rawQ.find(x => x.id === q.id));
-            
+            if(isCor) state.score++; else if(!state.isOffTheRecord) addToBank('mistakes', state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
             document.getElementById('header-score').innerText = `${state.score} / ${state.actQ.length}`;
             document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
-
             if(state.mode === 'practice') {
                 if(isCor) btn.classList.add('correct-ans'); else {
                     btn.classList.add('wrong-ans');
@@ -434,7 +412,7 @@
                 document.getElementById('explanation-text').innerText = q.explanation || 'No logic provided.';
                 document.getElementById('explanation-box').classList.remove('hidden');
                 configRemoveBtn(q);
-            } else { btn.classList.add('border-blue-500'); } // Exam neutral
+            } else { btn.classList.add('border-blue-500'); }
             document.getElementById('btn-next-q').classList.remove('hidden');
         }
 
@@ -446,7 +424,6 @@
         function finishExam() {
             clearInterval(state.timer);
             const missed = state.actQ.filter(q => q.answered && q.opts.find(o=>o.t===q.corT)?.t !== q.opts.find(o=>o.selected)?.t).map(q => state.rawQ.find(x=>x.id===q.id));
-            
             if(!state.isOffTheRecord && (state.mode === 'practice' || state.mode === 'exam')) {
                 db.history.unshift({ id: 'att_'+Date.now(), date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
                 saveDB(); renderHistory(); renderSessions();
@@ -456,15 +433,13 @@
             document.getElementById('res-score').innerText = `${state.score}/${state.actQ.length}`;
             document.getElementById('res-acc').innerText = `${acc}%`;
             document.getElementById('res-time').innerText = `${Math.floor(state.timeSpent/60)}m ${state.timeSpent%60}s`;
-            
             const btnM = document.getElementById('res-btn-mistake'); const btnWM = document.getElementById('res-btn-wmistake');
             if(missed.length) { btnM.disabled=false; btnWM.disabled=false; btnM.classList.remove('opacity-50'); btnWM.classList.remove('opacity-50'); }
             else { btnM.disabled=true; btnWM.disabled=true; btnM.classList.add('opacity-50'); btnWM.classList.add('opacity-50'); }
         }
 
-        function relaunchFromRes(act) { relaunch(act); } // Hooks into existing logic
+        function relaunchFromRes(act) { relaunch(act); }
 
-        // --- PORTABILITY ---
         function exportJSON() {
             const data = encodeURIComponent(JSON.stringify(db));
             const a = document.createElement('a'); a.href = `data:text/json;charset=utf-8,${data}`; a.download = `CA_Master_Backup_${Date.now()}.json`; a.click();
@@ -476,7 +451,6 @@
         }
         function exportBanksCSV() {
             let combined = [...db.mistakes, ...db.flags];
-            // Deduplicate for CSV
             combined = Array.from(new Map(combined.map(item => [item.id + item.category3, item])).values());
             if(!combined.length) return alert("Banks are empty.");
             const csv = Papa.unparse(combined);

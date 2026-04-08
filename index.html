@@ -202,7 +202,7 @@
         let db = { history: [], mistakes: [], flags: [] };
         let state = {
             subject: null, file: null, mode: null, rawQ: [], actQ: [], idx: 0, score: 0,
-            timer: null, timeLeft: EXAM_TIME, timeSpent: 0, isOffTheRecord: false, revBankType: null, selAttemptId: null
+            timer: null, timeLeft: EXAM_TIME, timeSpent: 0, isOffTheRecord: false, revBankType: null, selAttemptId: null, missedQ: []
         };
 
         function loadDB() {
@@ -234,7 +234,7 @@
             renderBanks(); 
             renderHistory(); 
             renderSessions();
-            switchTab('history'); // BUG FIX 1: Forces tabs to initialize visually
+            switchTab('history'); 
             document.getElementById('app-header').classList.remove('hidden');
         }
 
@@ -301,15 +301,20 @@
 
         function relaunch(action) {
             const att = db.history.find(x => x.id === state.selAttemptId);
-            state.subject = att.subject; state.file = att.file; state.isOffTheRecord = false; state.revBankType = null;
+            if (!att) return alert("Attempt not found in history.");
+            
+            state.subject = att.subject; 
+            state.file = att.file; 
+            state.isOffTheRecord = false; 
+            state.revBankType = null;
             state.rawQ = (action.includes('mistakes')) ? att.missed : att.raw;
+            
             if(!state.rawQ || state.rawQ.length === 0) return alert("No mistakes found.");
             startQuizEngine(action.includes('watch') ? 'watch' : 'practice');
         }
 
         function renderSessions() {
             const tbody = document.getElementById('session-tbody');
-            // BUG FIX 2: Added explicit empty state for sessions
             if (db.history.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">No session data found. Upload a file to start tracking.</td></tr>`;
             } else {
@@ -347,7 +352,7 @@
                 let opts = [{k:'A', t:q.option_a}, {k:'B', t:q.option_b}, {k:'C', t:q.option_c}, {k:'D', t:q.option_d}];
                 let corT = opts.find(o => o.k === q.correct_option?.trim().toUpperCase())?.t;
                 if(mode !== 'watch') opts.sort(() => 0.5 - Math.random());
-                return {...q, opts, corT, answered: false, userAnswer: null}; // Added userAnswer tracker
+                return {...q, opts, corT, answered: false, userAnswer: null};
             });
             if(mode !== 'watch') state.actQ.sort(() => 0.5 - Math.random());
             navigate('quiz');
@@ -425,7 +430,7 @@
         function handleAns(sel, btn) {
             const q = state.actQ[state.idx]; if(q.answered) return; 
             q.answered = true;
-            q.userAnswer = sel.t; // BUG FIX 3: Accurately tracking what the user selected
+            q.userAnswer = sel.t;
 
             const isCor = sel.t === q.corT;
             if(isCor) state.score++; else if(!state.isOffTheRecord) addToBank('mistakes', state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
@@ -453,11 +458,13 @@
 
         function finishExam() {
             clearInterval(state.timer);
-            // Uses the fixed 'userAnswer' variable to safely identify actual mistakes
-            const missed = state.actQ.filter(q => q.answered && q.userAnswer !== q.corT).map(q => state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
             
+            const missed = state.actQ.filter(q => q.answered && q.userAnswer !== q.corT).map(q => state.rawQ.find(x => x.id === q.id && x.category3 === q.category3));
+            state.missedQ = missed; // Store missed questions in state for immediate re-use in relaunchFromRes
+
             if(!state.isOffTheRecord && (state.mode === 'practice' || state.mode === 'exam')) {
-                db.history.unshift({ id: 'att_'+Date.now(), date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
+                const attemptId = 'att_'+Date.now();
+                db.history.unshift({ id: attemptId, date: new Date().toLocaleString(), subject: state.subject, file: state.file, score: state.score, total: state.actQ.length, raw: state.rawQ, missed: missed });
                 saveDB(); renderHistory(); renderSessions();
             }
             
@@ -472,7 +479,14 @@
             else { btnM.disabled=true; btnWM.disabled=true; btnM.classList.add('opacity-50', 'cursor-not-allowed'); btnWM.classList.add('opacity-50', 'cursor-not-allowed'); }
         }
 
-        function relaunchFromRes(act) { relaunch(act); }
+        function relaunchFromRes(action) {
+            if(action.includes('mistakes')) {
+                if(!state.missedQ || state.missedQ.length === 0) return alert("No mistakes found.");
+                state.rawQ = state.missedQ;
+            }
+            // State subject, file, and bank types remain intact from the just-finished quiz
+            startQuizEngine(action.includes('watch') ? 'watch' : 'practice');
+        }
 
         function exportJSON() {
             const data = encodeURIComponent(JSON.stringify(db));

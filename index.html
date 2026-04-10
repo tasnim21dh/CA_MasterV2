@@ -114,8 +114,8 @@
                     <div class="space-y-2">
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Data Clearing</p>
                         <button onclick="globalClear('history')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All History <i data-lucide="trash" class="w-4 h-4"></i></button>
-                        <button onclick="globalClear('uploads')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All Uploads (Keep Banks) <i data-lucide="trash" class="w-4 h-4"></i></button>
-                        <button onclick="globalClear('banks')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear Revision Banks <i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="globalClear('uploads')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All Uploads <i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="globalClear('banks')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All Revision Banks <i data-lucide="trash" class="w-4 h-4"></i></button>
                     </div>
                     
                     <div class="space-y-2 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
@@ -301,7 +301,7 @@
     </div>
 
     <script>
-        // --- SW REGISTRATION (RESTORED) ---
+        // --- SW REGISTRATION ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
             .then(reg => document.getElementById('sw-status').innerHTML = "🟢 <span class='text-green-500 font-bold'>System Online:</span> Offline Database Active")
@@ -310,7 +310,8 @@
             document.getElementById('sw-status').innerHTML = "🔴 <span class='text-red-500 font-bold'>System Error:</span> Browser does not support offline mode";
         }
 
-        const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology"];
+        const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology", "Random All"];
+        const ACTUAL_SUBJECTS = SUBJECTS.slice(0, 7); // Used for Checklists (excludes 'Random All')
         const EXAM_TIME = 3600;
         let db; 
         
@@ -319,7 +320,7 @@
             activeFileId: null, fileTitle: null, mode: null, rawQ: [], actQ: [], idx: 0, 
             score: 0, timer: null, timeLeft: EXAM_TIME, timeSpent: 0, qStartTime: 0,
             isOffTheRecord: false, revBankType: null, missedQ: [], selAttemptId: null,
-            filter: { source: 'all', qty: 'all', subjects: [...SUBJECTS], type: null, diff: null }
+            filter: { source: 'all', qty: 'all', subjects: [...ACTUAL_SUBJECTS], type: null, diff: null }
         };
 
         // --- DATABASE ---
@@ -382,28 +383,21 @@
 
         // --- DASHBOARD RENDERING ---
         async function renderDashboard() {
-            const hist = await getStoreAll('history');
             const qs = await getStoreAll('questions');
             const ms = await getStoreAll('mistakes');
             const fs = await getStoreAll('flags');
 
-            // 1. Subject Blocks (with Strength Meters)
-            document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => {
-                const sHist = hist.filter(h => h.subject.includes(s));
-                const avg = sHist.length ? Math.round(sHist.reduce((a,b)=>a+(b.score/b.total),0)/sHist.length * 100) : 0;
-                return `
-                <button onclick="handleSubjectClick('${s}')" class="glass-panel p-5 rounded-xl text-left hover:border-blue-500 transition group">
-                    <p class="font-bold text-slate-200 group-hover:text-blue-400 truncate mb-3">${s}</p>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full"><div class="bg-blue-500 h-1.5 rounded-full" style="width: ${avg}%"></div></div>
-                    <p class="text-[10px] text-slate-500 mt-1 text-right">${sHist.length ? avg+'% Avg' : 'No Data'}</p>
-                </button>`;
-            }).join('');
+            // 1. Subject Blocks (Restored to perfectly match your original layout)
+            document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => `
+                <button onclick="${s === 'Random All' ? "openFilterPage({isDashboardRandom: true})" : `handleSubjectClick('${s}')`}" class="glass-panel p-6 rounded-xl font-bold hover:bg-slate-800 hover:text-blue-400 transition-all shadow-md group ${s === 'Random All' ? 'border-2 border-blue-500 text-blue-400' : 'text-slate-200'} flex items-center justify-center text-center">
+                    <span class="group-hover:scale-105 inline-block transition-transform">${s}</span>
+                </button>`).join('');
 
-            // 2. Revision Banks
+            // 2. Revision Banks (Restored to centered texts matching original layout)
             const renderBankGrid = (data, elId, type) => {
-                document.getElementById(elId).innerHTML = [...SUBJECTS, 'Random All'].map(s => {
+                document.getElementById(elId).innerHTML = SUBJECTS.map(s => {
                     const count = s === 'Random All' ? data.length : data.filter(q => q.category3 === s).length;
-                    return `<button onclick="openFilterPage({bank: '${type}', subject: '${s}'})" class="p-2 text-xs text-left bg-slate-800/50 rounded border border-slate-700 ${count>0?'text-slate-300 hover:border-blue-500 transition':'text-slate-600 opacity-50'}" ${count===0?'disabled':''}>${s} (${count})</button>`;
+                    return `<button onclick="openFilterPage({bank: '${type}', subject: '${s}'})" class="p-2 text-xs text-center bg-slate-800/50 rounded border border-slate-700 ${count>0?'text-slate-300 hover:border-blue-500 transition':'text-slate-600 opacity-50'}" ${count===0?'disabled':''}>${s} (${count})</button>`;
                 }).join('');
             };
             renderBankGrid(ms, 'mistake-subjects', 'mistakes');
@@ -419,10 +413,10 @@
             renderCatGrid(['Direct/Normal', 'Scenario-Based', 'Multiple-Response', 'Calculated'], 'Category4', 'type-blocks');
             renderCatGrid(['Easy', 'Medium', 'Hard'], 'difficulty', 'diff-blocks');
 
-            // 4. Setup History Filters (if not already set)
+            // 4. Setup History Filters (Matching your original oval pills layout)
             const histFilters = document.getElementById('history-filters');
             if(!histFilters.innerHTML) {
-                 histFilters.innerHTML = [...SUBJECTS, 'Random All'].map(s => `<button onclick="loadHistoryForSub('${s}')" class="px-4 py-2 bg-slate-800 rounded-full text-xs font-bold hover:bg-slate-700 hover:text-white border border-slate-700 transition ${s==='Random All'?'text-blue-400':'text-slate-400'}">${s}</button>`).join('');
+                 histFilters.innerHTML = SUBJECTS.map(s => `<button onclick="loadHistoryForSub('${s}')" class="px-4 py-2 bg-slate-800 rounded-full text-xs font-bold hover:bg-slate-700 hover:text-white border border-slate-700 transition ${s==='Random All'?'text-blue-400':'text-slate-400'}">${s}</button>`).join('');
                  loadHistoryForSub('Random All');
             }
 
@@ -440,7 +434,7 @@
             lucide.createIcons();
         }
 
-        // --- EXPORTS & FULL SYSTEM MIGRATION (RESTORED) ---
+        // --- EXPORTS & FULL SYSTEM MIGRATION ---
         async function exportBanks(format) {
             const m = await getStoreAll('mistakes'); const f = await getStoreAll('flags');
             let combined = Array.from(new Map([...m, ...f].map(i => [i.uniqueId, i])).values());
@@ -489,14 +483,14 @@
 
         // --- FILTER PAGE LOGIC ---
         async function openFilterPage(config) {
-            state.filter = { source: 'all', qty: 'all', subjects: [...SUBJECTS], bank: null, catKey: null, catVal: null };
+            state.filter = { source: 'all', qty: 'all', subjects: [...ACTUAL_SUBJECTS], bank: null, catKey: null, catVal: null };
             
             document.getElementById('filter-source-block').classList.add('hidden');
             document.getElementById('btn-filter-exam').classList.remove('hidden');
 
             if (config.bank) {
                 state.filter.bank = config.bank;
-                state.filter.subjects = config.subject === 'Random All' ? [...SUBJECTS] : [config.subject];
+                state.filter.subjects = config.subject === 'Random All' ? [...ACTUAL_SUBJECTS] : [config.subject];
                 document.getElementById('filter-title').innerText = `${config.bank.toUpperCase()} Review`;
                 document.getElementById('filter-subtitle').innerText = config.subject;
                 document.getElementById('btn-filter-exam').classList.add('hidden'); 
@@ -537,7 +531,7 @@
         }
 
         function renderFilterSubjects() {
-            document.getElementById('filter-subject-list').innerHTML = SUBJECTS.map(s => {
+            document.getElementById('filter-subject-list').innerHTML = ACTUAL_SUBJECTS.map(s => {
                 const isChecked = state.filter.subjects.includes(s);
                 return `<label class="flex items-center gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700">
                     <input type="checkbox" value="${s}" ${isChecked?'checked':''} onchange="toggleFilterSub(this)" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 bg-slate-700 border-slate-600">
@@ -551,7 +545,7 @@
             else state.filter.subjects = state.filter.subjects.filter(s => s !== el.value);
         }
         function toggleAllSubjects() {
-            state.filter.subjects = state.filter.subjects.length === SUBJECTS.length ? [] : [...SUBJECTS];
+            state.filter.subjects = state.filter.subjects.length === ACTUAL_SUBJECTS.length ? [] : [...ACTUAL_SUBJECTS];
             renderFilterSubjects();
         }
 
@@ -656,7 +650,7 @@
             renderDashboard();
         }
 
-        // --- HISTORY REVIEW (RESTORED) ---
+        // --- HISTORY REVIEW ---
         async function openAttemptConfig(attId) {
             const hist = await getStoreAll('history'); const att = hist.find(x => x.id === attId);
             state.selAttemptId = attId; 
@@ -694,7 +688,6 @@
                 if(mode !== 'watch') opts.sort(() => 0.5 - Math.random());
                 const isMRQ = q.Category4 === 'Multiple-Response' || corTexts.length > 1;
                 
-                // If launching from history mistake review, preserve previous answers for watch mode
                 let previousUA = q.previousUserAnswers || [];
                 return {...q, opts, corTexts, isMRQ, answered: false, userAnswers: previousUA, timeTaken: 0};
             });

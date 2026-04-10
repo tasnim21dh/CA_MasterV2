@@ -107,15 +107,32 @@
                 </div>
             </div>
 
-            <div class="glass-panel p-6 rounded-2xl border-t border-slate-700">
+            <div class="glass-panel p-6 rounded-2xl border-t border-slate-700 relative">
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-300"><i data-lucide="settings" class="w-5 h-5"></i> Master Options</h2>
+                
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="space-y-2">
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Data Clearing</p>
-                        <button onclick="globalClear('history')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 flex items-center justify-between">Clear All History <i data-lucide="trash" class="w-4 h-4"></i></button>
-                        <button onclick="globalClear('uploads')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 flex items-center justify-between">Clear All Uploads (Keep Banks) <i data-lucide="trash" class="w-4 h-4"></i></button>
-                        <button onclick="globalClear('banks')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 flex items-center justify-between">Clear Revision Banks <i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="globalClear('history')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All History <i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="globalClear('uploads')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear All Uploads (Keep Banks) <i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="globalClear('banks')" class="w-full p-2 bg-slate-800 hover:bg-red-900/50 text-red-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Clear Revision Banks <i data-lucide="trash" class="w-4 h-4"></i></button>
                     </div>
+                    
+                    <div class="space-y-2 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Revision Banks (Flags/Mistakes)</p>
+                        <button onclick="exportBanks('csv')" class="w-full p-2 bg-slate-800 hover:bg-slate-700 text-orange-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Export Banks (CSV) <i data-lucide="file-spreadsheet" class="w-4 h-4"></i></button>
+                        <button onclick="exportBanks('json')" class="w-full p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 text-sm rounded border border-slate-700 transition flex items-center justify-between">Export Banks (JSON) <i data-lucide="download" class="w-4 h-4"></i></button>
+                        <label class="w-full p-2 bg-slate-800 hover:bg-slate-700 text-green-400 text-sm rounded border border-slate-700 transition flex items-center justify-between cursor-pointer">Import Banks (JSON) <i data-lucide="upload" class="w-4 h-4"></i><input type="file" accept=".json" class="hidden" onchange="importBanks(event)"></label>
+                    </div>
+
+                    <div class="space-y-2 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full System Migration</p>
+                        <button onclick="exportFullSystem()" class="w-full p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-sm font-bold rounded border border-blue-500/50 transition flex items-center justify-between">Backup Progress <i data-lucide="hard-drive-download" class="w-4 h-4"></i></button>
+                        <label class="w-full p-2 bg-green-600/20 hover:bg-green-600/40 text-green-400 text-sm font-bold rounded border border-green-500/50 transition flex items-center justify-between cursor-pointer">Restore Progress <i data-lucide="hard-drive-upload" class="w-4 h-4"></i><input type="file" accept=".json" class="hidden" onchange="importFullSystem(event)"></label>
+                    </div>
+                </div>
+                <div class="mt-6 border-t border-slate-800 pt-4">
+                    <p id="sw-status" class="text-xs text-center font-mono text-slate-500 flex items-center justify-center gap-2"></p>
                 </div>
             </div>
         </div>
@@ -154,17 +171,17 @@
             <div id="filter-source-block" class="hidden glass-panel p-6 rounded-xl mb-6">
                 <h4 class="font-bold text-slate-300 mb-4 text-sm uppercase tracking-wider">1. Select Source</h4>
                 <div class="grid grid-cols-2 gap-4">
-                    <button id="btn-src-all" onclick="setFilterSource('all')" class="p-3 bg-blue-900/30 border-2 border-blue-500 rounded-lg text-white font-bold">All Questions</button>
-                    <button id="btn-src-mistakes" onclick="setFilterSource('mistakes')" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-slate-400 font-bold hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed">Mistakes Only</button>
+                    <button id="btn-src-all" onclick="setFilterSource('all')" class="p-3 bg-blue-900/30 border-2 border-blue-500 rounded-lg text-white font-bold transition">All Questions</button>
+                    <button id="btn-src-mistakes" onclick="setFilterSource('mistakes')" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-slate-400 font-bold hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition">Mistakes Only</button>
                 </div>
             </div>
 
             <div class="glass-panel p-6 rounded-xl mb-6">
                 <h4 class="font-bold text-slate-300 mb-4 text-sm uppercase tracking-wider">Quantity</h4>
                 <div class="grid grid-cols-3 gap-4">
-                    <button onclick="setFilterQty(10)" id="btn-qty-10" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white font-bold">10 Qs</button>
-                    <button onclick="setFilterQty(30)" id="btn-qty-30" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white font-bold">30 Qs</button>
-                    <button onclick="setFilterQty('all')" id="btn-qty-all" class="p-3 bg-blue-900/30 border-2 border-blue-500 rounded-lg text-blue-400 font-bold">All</button>
+                    <button onclick="setFilterQty(10)" id="btn-qty-10" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white font-bold transition">10 Qs</button>
+                    <button onclick="setFilterQty(30)" id="btn-qty-30" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white font-bold transition">30 Qs</button>
+                    <button onclick="setFilterQty('all')" id="btn-qty-all" class="p-3 bg-blue-900/30 border-2 border-blue-500 rounded-lg text-blue-400 font-bold transition">All</button>
                 </div>
             </div>
 
@@ -177,8 +194,8 @@
             </div>
 
             <div class="flex gap-4 pt-4">
-                <button onclick="launchFilteredSession('practice')" class="flex-1 p-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold shadow-lg">Start Practice Mode</button>
-                <button onclick="launchFilteredSession('exam')" id="btn-filter-exam" class="flex-1 p-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold shadow-lg">Start Exam Mode</button>
+                <button onclick="launchFilteredSession('practice')" class="flex-1 p-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold shadow-lg transition">Start Practice Mode</button>
+                <button onclick="launchFilteredSession('exam')" id="btn-filter-exam" class="flex-1 p-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold shadow-lg transition">Start Exam Mode</button>
             </div>
         </div>
 
@@ -227,8 +244,8 @@
                 <div class="mt-8 flex justify-between items-center">
                     <button onclick="confirmEarlySubmit()" id="btn-early-submit" class="text-sm text-slate-500 hover:text-white hidden">Submit Exam Early</button>
                     <div class="flex-1 flex justify-end gap-3">
-                        <button id="btn-check-mrq" onclick="submitMRQ()" class="hidden px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg">Check Answer</button>
-                        <button id="btn-next-q" onclick="nextQuestion()" class="hidden px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg">Next</button>
+                        <button id="btn-check-mrq" onclick="submitMRQ()" class="hidden px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg transition">Check Answer</button>
+                        <button id="btn-next-q" onclick="nextQuestion()" class="hidden px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg transition">Next</button>
                     </div>
                 </div>
             </div>
@@ -243,13 +260,31 @@
                     <div><p class="text-5xl font-bold text-purple-400" id="res-time">0m</p><p class="text-slate-400 text-xs uppercase mt-3">Time</p></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button onclick="relaunchFromRes('retake_all')" class="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-white">Retake Full</button>
-                    <button onclick="relaunchFromRes('retake_mistakes')" id="res-btn-mistake" class="p-4 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-xl font-bold text-orange-400">Retake Mistakes</button>
-                    <button onclick="relaunchFromRes('watch_all')" class="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-white">Watch Full</button>
-                    <button onclick="relaunchFromRes('watch_mistakes')" id="res-btn-wmistake" class="p-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl font-bold text-slate-300">Watch Mistakes</button>
+                    <button onclick="relaunchFromRes('retake_all')" class="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-white transition">Retake Full</button>
+                    <button onclick="relaunchFromRes('retake_mistakes')" id="res-btn-mistake" class="p-4 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded-xl font-bold text-orange-400 transition">Retake Mistakes</button>
+                    <button onclick="relaunchFromRes('watch_all')" class="p-4 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-white transition">Watch Full</button>
+                    <button onclick="relaunchFromRes('watch_mistakes')" id="res-btn-wmistake" class="p-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl font-bold text-slate-300 transition">Watch Mistakes</button>
                 </div>
             </div>
-            <button onclick="navigate('dashboard')" class="px-8 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold mt-4 text-white">Return to Dashboard</button>
+            <button onclick="navigate('dashboard')" class="px-8 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold mt-4 text-white transition">Return to Dashboard</button>
+        </div>
+
+        <div id="page-history-review" class="hidden space-y-8 block">
+            <button onclick="navigate('dashboard')" class="text-slate-400 hover:text-white flex items-center gap-2 mb-4"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard</button>
+            <div class="glass-panel p-8 md:p-12 rounded-3xl text-center max-w-2xl mx-auto">
+                <h2 class="text-3xl font-bold mb-2 text-white">Review Attempt</h2>
+                <p class="text-slate-400 mb-8 text-lg" id="att-meta-main">File Name • Date</p>
+                <div class="flex justify-center gap-8 mb-10 pb-8 border-b border-slate-700">
+                    <div><p class="text-4xl font-bold text-blue-400" id="att-score-disp">0/0</p><p class="text-xs text-slate-500 uppercase mt-1">Score</p></div>
+                    <div><p class="text-4xl font-bold text-orange-400" id="att-miss-disp">0</p><p class="text-xs text-slate-500 uppercase mt-1">Mistakes</p></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="relaunchHistory('retake_all', 'exam')" class="p-5 bg-blue-600 rounded-xl font-bold btn-hover text-lg shadow-lg text-white">Retake Full</button>
+                    <button onclick="relaunchHistory('retake_mistakes', 'practice')" id="btn-att-rm" class="p-5 bg-orange-600 rounded-xl font-bold btn-hover text-lg shadow-lg text-white">Retake Mistakes</button>
+                    <button onclick="relaunchHistory('watch_all', 'watch')" class="p-5 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold btn-hover border border-slate-600 text-white">Watch Full</button>
+                    <button onclick="relaunchHistory('watch_mistakes', 'watch')" id="btn-att-wm" class="p-5 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold btn-hover border border-slate-600 text-slate-300">Watch Mistakes</button>
+                </div>
+            </div>
         </div>
 
     </main>
@@ -259,13 +294,22 @@
             <h3 class="text-2xl font-bold text-white mb-2">Submit Exam?</h3>
             <p class="text-slate-400 mb-6" id="modal-submit-text">You have X unanswered questions.</p>
             <div class="flex gap-4">
-                <button onclick="document.getElementById('modal-submit').classList.add('hidden')" class="flex-1 p-3 bg-slate-700 rounded-xl text-white font-bold hover:bg-slate-600">Cancel</button>
-                <button onclick="finishExam()" class="flex-1 p-3 bg-red-600 rounded-xl text-white font-bold hover:bg-red-500">Submit</button>
+                <button onclick="document.getElementById('modal-submit').classList.add('hidden')" class="flex-1 p-3 bg-slate-700 rounded-xl text-white font-bold hover:bg-slate-600 transition">Cancel</button>
+                <button onclick="finishExam()" class="flex-1 p-3 bg-red-600 rounded-xl text-white font-bold hover:bg-red-500 transition">Submit</button>
             </div>
         </div>
     </div>
 
     <script>
+        // --- SW REGISTRATION (RESTORED) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+            .then(reg => document.getElementById('sw-status').innerHTML = "🟢 <span class='text-green-500 font-bold'>System Online:</span> Offline Database Active")
+            .catch(err => document.getElementById('sw-status').innerHTML = "🔴 <span class='text-red-500 font-bold'>System Warning:</span> Service Worker Failed");
+        } else {
+            document.getElementById('sw-status').innerHTML = "🔴 <span class='text-red-500 font-bold'>System Error:</span> Browser does not support offline mode";
+        }
+
         const SUBJECTS = ["Assurance", "Accounting", "Business, Technology and Finance", "Management Information", "Principles of Taxation", "Business Laws", "Information Technology"];
         const EXAM_TIME = 3600;
         let db; 
@@ -274,21 +318,21 @@
         let state = {
             activeFileId: null, fileTitle: null, mode: null, rawQ: [], actQ: [], idx: 0, 
             score: 0, timer: null, timeLeft: EXAM_TIME, timeSpent: 0, qStartTime: 0,
-            isOffTheRecord: false, revBankType: null, missedQ: [], 
+            isOffTheRecord: false, revBankType: null, missedQ: [], selAttemptId: null,
             filter: { source: 'all', qty: 'all', subjects: [...SUBJECTS], type: null, diff: null }
         };
 
         // --- DATABASE ---
         function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('CAMasterDB', 2); // Upgraded version for new schema
+                const request = indexedDB.open('CAMasterDB', 2); 
                 request.onupgradeneeded = (e) => {
                     const database = e.target.result;
                     if(!database.objectStoreNames.contains('files')) database.createObjectStore('files', {keyPath: 'id'});
                     if(!database.objectStoreNames.contains('questions')) {
                         const qStore = database.createObjectStore('questions', {keyPath: 'uniqueId'});
                         qStore.createIndex('fileId', 'fileId', {unique: false});
-                        qStore.createIndex('category3', 'category3', {unique: false}); // Subject index
+                        qStore.createIndex('category3', 'category3', {unique: false}); 
                     }
                     if(!database.objectStoreNames.contains('history')) database.createObjectStore('history', {keyPath: 'id'});
                     if(!database.objectStoreNames.contains('mistakes')) database.createObjectStore('mistakes', {keyPath: 'uniqueId'});
@@ -320,7 +364,7 @@
         };
 
         function navigate(pageId) {
-            ['dashboard', 'library', 'filter', 'strategy', 'quiz', 'results'].forEach(p => {
+            ['dashboard', 'library', 'filter', 'strategy', 'quiz', 'results', 'history-review'].forEach(p => {
                 document.getElementById(`page-${p}`).classList.add('hidden');
             });
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
@@ -345,7 +389,7 @@
 
             // 1. Subject Blocks (with Strength Meters)
             document.getElementById('subject-blocks').innerHTML = SUBJECTS.map(s => {
-                const sHist = hist.filter(h => h.subject === s);
+                const sHist = hist.filter(h => h.subject.includes(s));
                 const avg = sHist.length ? Math.round(sHist.reduce((a,b)=>a+(b.score/b.total),0)/sHist.length * 100) : 0;
                 return `
                 <button onclick="handleSubjectClick('${s}')" class="glass-panel p-5 rounded-xl text-left hover:border-blue-500 transition group">
@@ -375,10 +419,75 @@
             renderCatGrid(['Direct/Normal', 'Scenario-Based', 'Multiple-Response', 'Calculated'], 'Category4', 'type-blocks');
             renderCatGrid(['Easy', 'Medium', 'Hard'], 'difficulty', 'diff-blocks');
 
-            renderUploads(qs);
+            // 4. Setup History Filters (if not already set)
+            const histFilters = document.getElementById('history-filters');
+            if(!histFilters.innerHTML) {
+                 histFilters.innerHTML = [...SUBJECTS, 'Random All'].map(s => `<button onclick="loadHistoryForSub('${s}')" class="px-4 py-2 bg-slate-800 rounded-full text-xs font-bold hover:bg-slate-700 hover:text-white border border-slate-700 transition ${s==='Random All'?'text-blue-400':'text-slate-400'}">${s}</button>`).join('');
+                 loadHistoryForSub('Random All');
+            }
+
+            renderUploads();
         }
 
-        // --- FILTER PAGE LOGIC (Unified Setup) ---
+        async function loadHistoryForSub(sub) {
+            const hist = await getStoreAll('history');
+            const arr = hist.filter(x => x.subject.includes(sub) || (sub === 'Random All' && x.subject.includes(',')));
+            document.getElementById('history-list').innerHTML = arr.length ? arr.map(a => `
+                <div onclick="openAttemptConfig('${a.id}')" class="p-4 bg-slate-800 rounded-xl cursor-pointer hover:border-blue-500 border border-slate-700 flex justify-between items-center btn-hover group shadow-sm">
+                    <div><p class="font-bold text-slate-200 group-hover:text-white">${a.file}</p><p class="text-xs text-slate-500 mt-1"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i>${a.date}</p></div>
+                    <div class="text-right"><p class="text-lg font-bold ${a.score/a.total >= 0.5 ? 'text-green-400' : 'text-orange-400'}">${a.score}/${a.total}</p><p class="text-[10px] text-slate-500 uppercase tracking-wide">Score</p></div>
+                </div>`).join('') : `<p class="text-slate-500 text-center py-8">No attempts recorded for ${sub}.</p>`;
+            lucide.createIcons();
+        }
+
+        // --- EXPORTS & FULL SYSTEM MIGRATION (RESTORED) ---
+        async function exportBanks(format) {
+            const m = await getStoreAll('mistakes'); const f = await getStoreAll('flags');
+            let combined = Array.from(new Map([...m, ...f].map(i => [i.uniqueId, i])).values());
+            if(!combined.length) return alert("Banks are empty.");
+            if(format === 'csv') downloadBlob(Papa.unparse(combined), 'text/csv', `CA_Banks_${Date.now()}.csv`);
+            else downloadBlob(JSON.stringify({ mistakes: m, flags: f }), 'application/json', `CA_Banks_Backup_${Date.now()}.json`);
+        }
+
+        function importBanks(e) {
+            const r = new FileReader();
+            r.onload = async ev => { try { 
+                const d = JSON.parse(ev.target.result); 
+                if(d.mistakes) { 
+                    await execStore('mistakes', 'readwrite', s => { d.mistakes.forEach(x => s.put(x)); return s.get('dummy'); });
+                    await execStore('flags', 'readwrite', s => { d.flags.forEach(x => s.put(x)); return s.get('dummy'); });
+                    renderDashboard(); alert("Banks Restored Successfully!"); 
+                } } catch { alert("Invalid JSON format."); } 
+            };
+            r.readAsText(e.target.files[0]);
+        }
+
+        async function exportFullSystem() {
+            const snapshot = { files: await getStoreAll('files'), questions: await getStoreAll('questions'), history: await getStoreAll('history'), mistakes: await getStoreAll('mistakes'), flags: await getStoreAll('flags') };
+            downloadBlob(JSON.stringify(snapshot), 'application/json', `CA_Master_FullSystem_${Date.now()}.json`);
+        }
+
+        function importFullSystem(e) {
+            if(!confirm('WARNING: This will completely overwrite ALL existing data, uploads, and history. Proceed?')) return;
+            const r = new FileReader();
+            r.onload = async ev => { try { 
+                const d = JSON.parse(ev.target.result); 
+                if(d.questions) { 
+                    await clearStore('files'); await clearStore('questions'); await clearStore('history'); await clearStore('mistakes'); await clearStore('flags');
+                    if(d.files) await execStore('files', 'readwrite', s => { d.files.forEach(x => s.put(x)); return s; });
+                    if(d.questions) await execStore('questions', 'readwrite', s => { d.questions.forEach(x => s.put(x)); return s; });
+                    if(d.history) await execStore('history', 'readwrite', s => { d.history.forEach(x => s.put(x)); return s; });
+                    if(d.mistakes) await execStore('mistakes', 'readwrite', s => { d.mistakes.forEach(x => s.put(x)); return s; });
+                    if(d.flags) await execStore('flags', 'readwrite', s => { d.flags.forEach(x => s.put(x)); return s; });
+                    renderDashboard(); alert("Full System Restored Successfully!"); 
+                } } catch(err) { alert("Invalid Backup File."); } 
+            };
+            r.readAsText(e.target.files[0]);
+        }
+
+        function downloadBlob(data, type, filename) { const a = document.createElement('a'); a.href = `data:${type};charset=utf-8,${encodeURIComponent(data)}`; a.download = filename; a.click(); }
+
+        // --- FILTER PAGE LOGIC ---
         async function openFilterPage(config) {
             state.filter = { source: 'all', qty: 'all', subjects: [...SUBJECTS], bank: null, catKey: null, catVal: null };
             
@@ -386,20 +495,17 @@
             document.getElementById('btn-filter-exam').classList.remove('hidden');
 
             if (config.bank) {
-                // Triggered from Mistake/Flag bank
                 state.filter.bank = config.bank;
                 state.filter.subjects = config.subject === 'Random All' ? [...SUBJECTS] : [config.subject];
                 document.getElementById('filter-title').innerText = `${config.bank.toUpperCase()} Review`;
                 document.getElementById('filter-subtitle').innerText = config.subject;
-                document.getElementById('btn-filter-exam').classList.add('hidden'); // Bank reviews are practice only
+                document.getElementById('btn-filter-exam').classList.add('hidden'); 
             } 
             else if (config.catKey) {
-                // Triggered from Q Type or Difficulty
                 state.filter.catKey = config.catKey; state.filter.catVal = config.catVal;
                 document.getElementById('filter-title').innerText = config.catVal;
                 document.getElementById('filter-subtitle').innerText = "Customize your session";
                 
-                // Show Source Selection & Check if Mistakes exist
                 document.getElementById('filter-source-block').classList.remove('hidden');
                 setFilterSource('all');
                 const ms = await getStoreAll('mistakes');
@@ -418,15 +524,15 @@
 
         function setFilterSource(src) {
             state.filter.source = src;
-            document.getElementById('btn-src-all').className = `p-3 rounded-lg font-bold ${src==='all'?'bg-blue-900/30 border-2 border-blue-500 text-white':'bg-slate-800 border-2 border-slate-700 text-slate-400'}`;
-            document.getElementById('btn-src-mistakes').className = `p-3 rounded-lg font-bold ${src==='mistakes'?'bg-blue-900/30 border-2 border-blue-500 text-white':'bg-slate-800 border-2 border-slate-700 text-slate-400 disabled:opacity-50'}`;
+            document.getElementById('btn-src-all').className = `p-3 rounded-lg font-bold transition ${src==='all'?'bg-blue-900/30 border-2 border-blue-500 text-white':'bg-slate-800 border-2 border-slate-700 text-slate-400'}`;
+            document.getElementById('btn-src-mistakes').className = `p-3 rounded-lg font-bold transition ${src==='mistakes'?'bg-blue-900/30 border-2 border-blue-500 text-white':'bg-slate-800 border-2 border-slate-700 text-slate-400 disabled:opacity-50'}`;
         }
 
         function setFilterQty(q) {
             state.filter.qty = q;
             [10, 30, 'all'].forEach(x => {
                 const btn = document.getElementById(`btn-qty-${x}`);
-                btn.className = `p-3 rounded-lg font-bold ${x===q ? 'bg-blue-900/30 border-2 border-blue-500 text-blue-400' : 'bg-slate-800 border-2 border-slate-700 text-white hover:border-slate-500'}`;
+                btn.className = `p-3 rounded-lg font-bold transition ${x===q ? 'bg-blue-900/30 border-2 border-blue-500 text-blue-400' : 'bg-slate-800 border-2 border-slate-700 text-white hover:border-slate-500'}`;
             });
         }
 
@@ -452,27 +558,21 @@
         async function launchFilteredSession(mode) {
             if(state.filter.subjects.length === 0) return alert("Select at least one subject.");
             
-            // 1. Determine Source Store
             const storeName = state.filter.bank || (state.filter.source === 'mistakes' ? 'mistakes' : 'questions');
             let pool = await getStoreAll(storeName);
 
-            // 2. Filter by Subjects
             pool = pool.filter(q => state.filter.subjects.includes(q.category3));
-
-            // 3. Filter by Category (if active)
             if(state.filter.catKey) pool = pool.filter(q => q[state.filter.catKey] === state.filter.catVal);
 
             if(pool.length === 0) return alert("No questions found matching these filters.");
 
-            // 4. Quantity Limitation
             if(state.filter.qty !== 'all') pool = pool.sort(() => 0.5 - Math.random()).slice(0, state.filter.qty);
             else pool = pool.sort(() => 0.5 - Math.random());
 
-            // 5. Initialize Engine
             state.rawQ = pool;
             state.fileTitle = state.filter.bank ? `${state.filter.bank.toUpperCase()} REVIEW` : "Custom Session";
             state.activeFileId = 'custom_session';
-            state.isOffTheRecord = storeName === 'mistakes' || state.filter.bank; // Don't log history for mistake reviews
+            state.isOffTheRecord = storeName === 'mistakes' || state.filter.bank; 
             state.revBankType = state.filter.bank || (state.filter.source === 'mistakes' ? 'mistakes' : null);
             
             startQuizEngine(mode);
@@ -528,7 +628,7 @@
             navigate('strategy');
         }
 
-        async function renderUploads(qsData) {
+        async function renderUploads() {
             const files = await getStoreAll('files');
             document.getElementById('uploads-tbody').innerHTML = files.map(f => `
                 <tr class="border-b border-slate-700/50">
@@ -556,6 +656,32 @@
             renderDashboard();
         }
 
+        // --- HISTORY REVIEW (RESTORED) ---
+        async function openAttemptConfig(attId) {
+            const hist = await getStoreAll('history'); const att = hist.find(x => x.id === attId);
+            state.selAttemptId = attId; 
+            document.getElementById('att-meta-main').innerText = `${att.file} • ${att.date}`;
+            document.getElementById('att-score-disp').innerText = `${att.score}/${att.total}`;
+            document.getElementById('att-miss-disp').innerText = att.missed ? att.missed.length : 0;
+            
+            const btnRM = document.getElementById('btn-att-rm'); const btnWM = document.getElementById('btn-att-wm');
+            if(!att.missed || att.missed.length === 0) { btnRM.disabled = true; btnWM.disabled = true; btnRM.classList.add('opacity-50', 'cursor-not-allowed'); btnWM.classList.add('opacity-50', 'cursor-not-allowed'); }
+            else { btnRM.disabled = false; btnWM.disabled = false; btnRM.classList.remove('opacity-50', 'cursor-not-allowed'); btnWM.classList.remove('opacity-50', 'cursor-not-allowed'); }
+            navigate('history-review');
+        }
+
+        async function relaunchHistory(action, forcedMode) {
+            const hist = await getStoreAll('history'); const att = hist.find(x => x.id === state.selAttemptId);
+            if(!att) return;
+            state.filter.subjects = att.subject.split(',');
+            state.fileTitle = att.file; state.activeFileId = 'history_relaunch';
+            state.isOffTheRecord = false; state.revBankType = null;
+            state.rawQ = action.includes('mistakes') ? att.missed : att.raw;
+            if(!state.rawQ || state.rawQ.length === 0) return alert("No mistakes found.");
+            
+            startQuizEngine(forcedMode);
+        }
+
         // --- QUIZ ENGINE ---
         function startQuizEngine(mode) {
             state.mode = mode; state.idx = 0; state.score = 0; state.timeSpent = 0; state.timeLeft = EXAM_TIME;
@@ -567,7 +693,10 @@
                 
                 if(mode !== 'watch') opts.sort(() => 0.5 - Math.random());
                 const isMRQ = q.Category4 === 'Multiple-Response' || corTexts.length > 1;
-                return {...q, opts, corTexts, isMRQ, answered: false, userAnswers: [], timeTaken: 0};
+                
+                // If launching from history mistake review, preserve previous answers for watch mode
+                let previousUA = q.previousUserAnswers || [];
+                return {...q, opts, corTexts, isMRQ, answered: false, userAnswers: previousUA, timeTaken: 0};
             });
             
             navigate('quiz');
@@ -599,18 +728,16 @@
 
         async function renderQ() {
             const q = state.actQ[state.idx];
-            state.qStartTime = state.timeSpent; // Record start time for this question
+            state.qStartTime = state.timeSpent; 
             
             document.getElementById('progress-bar').style.width = `${((state.idx)/state.actQ.length)*100}%`;
             document.getElementById('q-counter').innerText = `Question ${state.idx + 1} of ${state.actQ.length}`;
             document.getElementById('q-meta-tags').innerText = `${q.Category4 || 'Direct'} • ${q.difficulty || 'Unrated'}`;
             document.getElementById('q-text').innerText = q.question;
             
-            // Flag check
             const flags = await getStoreAll('flags');
             document.getElementById('btn-flag').className = `p-2 rounded-lg transition ${flags.some(x => x.uniqueId === q.uniqueId) ? 'bg-purple-900 text-purple-400' : 'bg-slate-800 text-slate-400 hover:text-purple-400'}`;
             
-            // Options setup
             const grid = document.getElementById('options-grid'); grid.innerHTML = '';
             q.opts.forEach((o, i) => {
                 const b = document.createElement('button');
@@ -647,7 +774,6 @@
             if(q.answered) return;
             
             if(q.isMRQ) {
-                // Multi-select toggle
                 const selIdx = q.userAnswers.indexOf(sel.t);
                 if(selIdx > -1) {
                     q.userAnswers.splice(selIdx, 1);
@@ -657,7 +783,6 @@
                     btn.classList.add('selected-mrq');
                 }
             } else {
-                // Single select instant grade
                 q.userAnswers = [sel.t];
                 gradeQuestion(q);
             }
@@ -674,7 +799,6 @@
             q.answered = true;
             q.timeTaken = state.timeSpent - state.qStartTime;
 
-            // Check if arrays match exactly
             const isCor = q.userAnswers.length === q.corTexts.length && q.userAnswers.every(v => q.corTexts.includes(v));
             
             if(isCor) state.score++; 
@@ -741,12 +865,11 @@
             clearInterval(state.timer);
             document.getElementById('modal-submit').classList.add('hidden');
             
-            // Mark unans
             state.actQ.forEach(q => { if(!q.answered) { q.answered=true; q.userAnswers=[]; q.timeTaken = state.timeSpent - state.qStartTime;} });
             
             const missed = state.actQ.filter(q => {
                 const isCor = q.userAnswers.length === q.corTexts.length && q.userAnswers.every(v => q.corTexts.includes(v));
-                if(!isCor && !state.isOffTheRecord) putStore('mistakes', state.rawQ.find(x => x.uniqueId === q.uniqueId)); // Safety catch
+                if(!isCor && !state.isOffTheRecord) putStore('mistakes', state.rawQ.find(x => x.uniqueId === q.uniqueId)); 
                 return !isCor;
             });
             state.missedQ = missed.map(q => ({...state.rawQ.find(x => x.uniqueId === q.uniqueId), previousUserAnswers: q.userAnswers}));
@@ -770,7 +893,7 @@
 
         function relaunchFromRes(action) {
             const mode = action.includes('watch') ? 'watch' : 'practice';
-            if(action.includes('mistakes')) state.rawQ = state.missedQ; // Use tracked mistakes with previous answers
+            if(action.includes('mistakes')) state.rawQ = state.missedQ; 
             startQuizEngine(mode);
         }
     </script>
